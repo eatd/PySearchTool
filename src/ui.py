@@ -36,6 +36,8 @@ class ReplacementWorker(threading.Thread):
                 rx = re.compile(rf"\b{re.escape(term)}\b", flags)
 
             count = 0
+
+            # TODO: Optimize by reading file once and applying all replacements
             for i, (item_id, path) in enumerate(self.file_map.items()):
                 try:
                     lines = read_file_lines(path)
@@ -84,11 +86,7 @@ class App(tk.Tk):
 
     def _make_style(self):
         style = ttk.Style(self)
-        if sys.platform == "win32":
-            try:
-                style.theme_use("vista")
-            except:
-                pass
+        style.theme_use("vista")
         style.configure("TButton", padding=5)
         style.configure("Header.TLabel", font=("Segoe UI", 10, "bold"))
 
@@ -114,7 +112,7 @@ class App(tk.Tk):
         )
 
         ttk.Label(frm, text="Includes:").grid(row=2, column=0, sticky="w")
-        self.include_var = tk.StringVar(value="*.py;*.txt;*.md;*.json")
+        self.include_var = tk.StringVar(value="*.py;*.txt;*.md;*.json;*.zip;*.tar.gz")
         ttk.Entry(frm, textvariable=self.include_var).grid(
             row=2, column=1, sticky="ew", padx=5
         )
@@ -278,6 +276,7 @@ class App(tk.Tk):
             pass
         self.after(50, self._poll_queue)
 
+    # TODO: Refactor _on_select to reduce complexity
     def _on_select(self, event):
         sel = self.tree.selection()
         if not sel:
@@ -326,10 +325,11 @@ class App(tk.Tk):
         try:
             if sys.platform == "win32":
                 os.startfile(m.path)
+            # TODO: Test on macOS and Linux, for now we simply open the file with default app
+            elif sys.platform == "linux":
+                subprocess.Popen(["xdg-open", str(m.path)])
             elif sys.platform == "darwin":
-                subprocess.run(["open", m.path])
-            else:
-                subprocess.run(["xdg-open", m.path])
+                subprocess.Popen(["open", str(m.path)])
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open file: {e}")
 
